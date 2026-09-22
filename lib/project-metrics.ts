@@ -14,6 +14,16 @@ export const reportingPeriods = [
 
 export type ReportingPeriod = typeof reportingPeriods[number]["suffix"];
 
+function approvedBy(project: Project, endDate: string) {
+  const approvedOn = project["Approved On"];
+  return /^\d{4}-\d{2}-\d{2}$/.test(approvedOn ?? "") && approvedOn <= endDate;
+}
+
+export function projectCountForPeriod(projects: Project[], suffix: ReportingPeriod) {
+  const endDate = reportingPeriods.find(period => period.suffix === suffix)!.endDate;
+  return projects.filter(project => approvedBy(project, endDate)).length;
+}
+
 export function numeric(value: string | undefined): number | null {
   if (!value?.trim()) return null;
   const number = Number(value.replaceAll(",", "").trim());
@@ -87,7 +97,7 @@ export function inventoryStats(projects: Project[]) {
       }
     }
   }
-  return { inventory, reportedInventory, unknownInventory: inventory - reportedInventory, booked, unsold: availableCount ? unsold : null, pct: reportedInventory ? booked / reportedInventory * 100 : 0 };
+  return { inventory, reportedInventory, unknownInventory: inventory - booked - unsold, booked, unsold: availableCount ? unsold : null, pct: inventory ? booked / inventory * 100 : 0 };
 }
 
 // March carries December reports forward when March bookings are missing.
@@ -100,9 +110,8 @@ export function quarterlyInventoryStats(projects: Project[], suffix: ReportingPe
   let unsold = 0;
   let availableCount = 0;
   for (const project of projects) {
-    const approvedOn = project["Approved On"];
     // Unknown dates cannot establish that a project existed by this period end.
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(approvedOn ?? "") || approvedOn > endDate) continue;
+    if (!approvedBy(project, endDate)) continue;
     const report = bookingForPeriod(project, suffix);
     if (!report) {
       inventory += numeric(project["Total Units"]) ?? 0;
@@ -125,9 +134,24 @@ export function quarterlyInventoryStats(projects: Project[], suffix: ReportingPe
   return {
     inventory,
     reportedInventory,
-    unknownInventory: inventory - reportedInventory,
+    unknownInventory: inventory - booked - unsold,
     booked: publishedCount ? booked : null,
     unsold: availableCount ? unsold : null,
-    pct: reportedInventory > 0 ? booked / reportedInventory * 100 : null,
+    pct: inventory > 0 ? booked / inventory * 100 : null,
   };
+}
+
+// Allocate the final decimal so displayed category shares sum to exactly 100%.
+export function inventoryShares(stats: { inventory: number; booked: number | null; unsold: number | null; unknownInventory: number }) {
+  if (stats.inventory <= 0) return { booked: null, unsold: null, unknownInventory: null };
+  const keys = ["booked", "unsold", "unknownInventory"] as const;
+  const parts = keys.map(key => {
+    const raw = (stats[key] ?? 0) / stats.inventory * 1000;
+    return { key, tenths: Math.floor(raw), remainder: raw - Math.floor(raw) };
+  });
+  let remaining = 1000 - parts.reduce((sum, part) => sum + part.tenths, 0);
+  for (const part of [...parts].sort((a, b) => b.remainder - a.remainder)) {
+    if (remaining-- > 0) part.tenths++;
+  }
+  return Object.fromEntries(parts.map(part => [part.key, part.tenths / 10])) as Record<typeof keys[number], number | null>;
 }

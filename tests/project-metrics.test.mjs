@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { inventoryStats, latestBooking, numeric, quarterlyInventoryStats, totalUnits, value } from "../lib/project-metrics.ts";
+import { inventoryShares, inventoryStats, latestBooking, numeric, projectCountForPeriod, quarterlyInventoryStats, totalUnits, value } from "../lib/project-metrics.ts";
 
 const orchard = {
   "Project Name": "GODREJ LAKESIDE ORCHARD",
@@ -50,7 +50,7 @@ test("no quarterly booking retains project inventory but excludes it from publis
   assert.equal(totalUnits(unpublished), 200);
   assert.equal(value(unpublished, "bookedPercent"), null);
   assert.deepEqual(inventoryStats([orchard, unpublished]), {
-    inventory: 1170, reportedInventory: 970, unknownInventory: 200, booked: 837, unsold: 133, pct: 837 / 970 * 100,
+    inventory: 1170, reportedInventory: 970, unknownInventory: 200, booked: 837, unsold: 133, pct: 837 / 1170 * 100,
   });
   assert.equal(totalUnits({ "Approved On": "2025-01-01", "Total Units": "NA" }), null);
 });
@@ -61,16 +61,16 @@ test("dated metrics use same-quarter inventory and bookings without carrying rep
     inventory: 1070, reportedInventory: 1070, unknownInventory: 0, booked: 698, unsold: 372, pct: 698 / 1070 * 100,
   });
   assert.deepEqual(quarterlyInventoryStats([orchard, oldReport], "Q1_FY26-27"), {
-    inventory: 1120, reportedInventory: 970, unknownInventory: 150, booked: 837, unsold: 133, pct: 837 / 970 * 100,
+    inventory: 1120, reportedInventory: 970, unknownInventory: 150, booked: 837, unsold: 133, pct: 837 / 1120 * 100,
   });
   assert.deepEqual(quarterlyInventoryStats([orchard], "Q3_FY25-26"), {
-    inventory: 698, reportedInventory: 0, unknownInventory: 698, booked: null, unsold: null, pct: null,
+    inventory: 698, reportedInventory: 0, unknownInventory: 698, booked: null, unsold: null, pct: 0,
   });
 });
 
 test("dated metrics distinguish zero sales from missing sales and fall back to project inventory", () => {
   assert.deepEqual(quarterlyInventoryStats([{ "Approved On": "2025-01-01", "Total Units": "120", "Units Booked (Q3_FY25-26)": "0" }], "Q3_FY25-26"), {
-    inventory: 120, reportedInventory: 120, unknownInventory: 0, booked: 0, unsold: null, pct: 0,
+    inventory: 120, reportedInventory: 120, unknownInventory: 120, booked: 0, unsold: null, pct: 0,
   });
 });
 
@@ -92,16 +92,16 @@ test("March carries December booked, inventory and availability together, markin
   // A March zero is a report; missing March availability does not borrow December's.
   const march = { ...december, "Units Booked (Q4_FY25-26)": "0" };
   assert.deepEqual(quarterlyInventoryStats([march], "Q4_FY25-26"), {
-    inventory: 150, reportedInventory: 150, unknownInventory: 0, booked: 0, unsold: null, pct: 0,
+    inventory: 150, reportedInventory: 150, unknownInventory: 150, booked: 0, unsold: null, pct: 0,
   });
 });
 
-test("dated Inventory includes unreported projects while the sales denominator excludes them", () => {
+test("dated Inventory and percentage denominator include unreported projects", () => {
   const december = { "Approved On": "2025-01-01", "Total Units": "150", "Units Booked (Q3_FY25-26)": "20", "Units Available (Q3_FY25-26)": "80" };
   const unpublished = { "Approved On": "2025-01-01", "Total Units": "250" };
   for (const suffix of ["Q3_FY25-26", "Q4_FY25-26"]) {
     assert.deepEqual(quarterlyInventoryStats([december, unpublished], suffix), {
-      inventory: 350, reportedInventory: 100, unknownInventory: 250, booked: 20, unsold: 80, pct: 20,
+      inventory: 350, reportedInventory: 100, unknownInventory: 250, booked: 20, unsold: 80, pct: 20 / 350 * 100,
     });
   }
 });
@@ -148,4 +148,30 @@ test("sales-data-missing units are unknown, not unsold, and respect historical c
   assert.equal(all.booked, 837);
   assert.equal(quarterlyInventoryStats([orchard, unpublished, later], "Q3_FY25-26").unknownInventory, 898);
   assert.equal(quarterlyInventoryStats([orchard, unpublished, later], "Q4_FY25-26").unknownInventory, 500);
+});
+
+test("inventory shares use total inventory and displayed shares sum to 100%", () => {
+  assert.deepEqual(inventoryShares({ inventory: 3, booked: 1, unsold: 1, unknownInventory: 1 }), {
+    booked: 33.4, unsold: 33.3, unknownInventory: 33.3,
+  });
+  assert.deepEqual(inventoryShares({ inventory: 100, booked: 20, unsold: 50, unknownInventory: 30 }), {
+    booked: 20, unsold: 50, unknownInventory: 30,
+  });
+  const totals = inventoryStats([orchard, { "Total Units": "200" }]);
+  assert.equal(totals.booked + totals.unsold + totals.unknownInventory, totals.inventory);
+  const percentages = inventoryShares(totals);
+  assert.equal(Math.round(Object.values(percentages).reduce((a, b) => a + b, 0) * 10), 1000);
+  assert.deepEqual(inventoryShares(inventoryStats([])), { booked: null, unsold: null, unknownInventory: null });
+});
+
+test("historical project counts include month-end approvals and exclude later or unknown dates", () => {
+  const projects = [
+    { "Approved On": "2025-12-31" },
+    { "Approved On": "2026-01-01" },
+    { "Approved On": "2026-03-31" },
+    { "Approved On": "2026-04-01" },
+    { "Approved On": "NA" },
+  ];
+  assert.equal(projectCountForPeriod(projects, "Q3_FY25-26"), 1);
+  assert.equal(projectCountForPeriod(projects, "Q4_FY25-26"), 3);
 });
