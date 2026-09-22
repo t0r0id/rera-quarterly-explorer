@@ -16,6 +16,7 @@ const columns: Column[] = [
   ["Registration Number", "RERA ID"],
 ] as const;
 const PAGE_SIZE = 100;
+const DEFAULT_APPROVAL_START = "2025-01-01";
 
 function parseCsv(text: string): Project[] {
   const rows: string[][] = []; let row: string[] = []; let field = ""; let quote = false;
@@ -69,7 +70,7 @@ export default function Home() {
   const [projectNames, setProjectNames] = useState<string[]>([]);
   const selectProjects = useCallback((names: string[]) => { setProjectNames(names); setPage(0); }, []);
   const [builders, setBuilders] = useState<string[]>([]), [promoters, setPromoters] = useState<string[]>([]), [talukas, setTalukas] = useState<string[]>([]), [types, setTypes] = useState<string[]>([]);
-  const [completionStart, setCompletionStart] = useState(""), [completionEnd, setCompletionEnd] = useState(""), [approvalStart, setApprovalStart] = useState(""), [approvalEnd, setApprovalEnd] = useState(""), [minimumUnits, setMinimumUnits] = useState(""), [maximumUnits, setMaximumUnits] = useState(""), [hasUpdate, setHasUpdate] = useState(true), [sort, setSort] = useState<Sort>({ key: "Total Units", direction: "desc" });
+  const [completionStart, setCompletionStart] = useState(""), [completionEnd, setCompletionEnd] = useState(""), [approvalStart, setApprovalStart] = useState(DEFAULT_APPROVAL_START), [approvalEnd, setApprovalEnd] = useState(""), [minimumUnits, setMinimumUnits] = useState(""), [maximumUnits, setMaximumUnits] = useState(""), [hasUpdate, setHasUpdate] = useState(true), [sort, setSort] = useState<Sort>({ key: "Total Units", direction: "desc" });
   useEffect(() => { fetch("/projects.csv").then(r => r.text()).then(t => setProjects(parseCsv(t))); }, []);
   const filterOptions = useMemo(() => Object.fromEntries(["Project Name", "Taluka", "Builder", "Promoter Name", "Project Type"].map(key => [key, [...new Set(projects.map(p => p[key]).filter(v => v && v !== "NA"))].sort((a, b) => a.localeCompare(b))])), [projects]);
   const options = (key: string) => filterOptions[key];
@@ -85,7 +86,7 @@ export default function Home() {
     value: period[key] === null ? "—" : key === "pct" ? `${period[key].toFixed(1)}%` : period[key].toLocaleString("en-IN"),
   }));
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); const currentPage = Math.min(page, pageCount - 1); const visibleProjects = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
-  const clear = () => { setProjectNames([]); setBuilders([]); setPromoters([]); setTalukas([]); setTypes([]); setCompletionStart(""); setCompletionEnd(""); setApprovalStart(""); setApprovalEnd(""); setMinimumUnits(""); setMaximumUnits(""); setHasUpdate(true); setPage(0); };
+  const clear = () => { setProjectNames([]); setBuilders([]); setPromoters([]); setTalukas([]); setTypes([]); setCompletionStart(""); setCompletionEnd(""); setApprovalStart(DEFAULT_APPROVAL_START); setApprovalEnd(""); setMinimumUnits(""); setMaximumUnits(""); setHasUpdate(true); setPage(0); };
   const sortBy = (key: string) => { setSort(s => ({ key, direction: s.key === key && s.direction === "asc" ? "desc" : "asc" })); setPage(0); };
   const moveColumn = (target: string) => { if (!draggedColumn || draggedColumn === target) return; setColumnOrder(current => { const from = current.findIndex(([key]) => key === draggedColumn); const to = current.findIndex(([key]) => key === target); const next = [...current]; const [moved] = next.splice(from, 1); next.splice(to, 0, moved); return next; }); setDraggedColumn(null); };
   return <main>
