@@ -40,6 +40,6 @@
 .metric--booked { background:var(--green); color:#fff; }
 .metric--booked > span, .metric--booked .metric-history dt { color:#cde7dc; }
 .metric--booked .metric-history { border-color:#ffffff40; }
-.metric--unsold { background:#e8eff9; color:#193e68; }
-.metric--unsold > span, .metric--unsold .metric-history dt { color:#446185; }
-.metric--unsold .metric-history { border-color:#bdcee3; }
+.metric--unsold { background:#fee8e7; color:#8f2424; }
+.metric--unsold > span, .metric--unsold .metric-history dt { color:#a03a3a; }
+.metric--unsold .metric-history { border-color:#edb8b5; }
