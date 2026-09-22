@@ -7,9 +7,9 @@ const quarters = [
 ] as const;
 
 export const reportingPeriods = [
-  { suffix: "Q3_FY25-26", label: "Dec 2025" },
-  { suffix: "Q4_FY25-26", label: "Mar 2026" },
-  { suffix: "Q1_FY26-27", label: "Jun 2026" },
+  { suffix: "Q3_FY25-26", label: "Dec 2025", endDate: "2025-12-31" },
+  { suffix: "Q4_FY25-26", label: "Mar 2026", endDate: "2026-03-31" },
+  { suffix: "Q1_FY26-27", label: "Jun 2026", endDate: "2026-06-30" },
 ] as const;
 
 export type ReportingPeriod = typeof reportingPeriods[number]["suffix"];
@@ -92,6 +92,7 @@ export function inventoryStats(projects: Project[]) {
 
 // March carries December reports forward when March bookings are missing.
 export function quarterlyInventoryStats(projects: Project[], suffix: ReportingPeriod) {
+  const endDate = reportingPeriods.find(period => period.suffix === suffix)!.endDate;
   let inventory = 0;
   let reportedInventory = 0;
   let booked = 0;
@@ -99,6 +100,9 @@ export function quarterlyInventoryStats(projects: Project[], suffix: ReportingPe
   let unsold = 0;
   let availableCount = 0;
   for (const project of projects) {
+    const approvedOn = project["Approved On"];
+    // Unknown dates cannot establish that a project existed by this period end.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(approvedOn ?? "") || approvedOn > endDate) continue;
     const report = bookingForPeriod(project, suffix);
     if (!report) {
       inventory += numeric(project["Total Units"]) ?? 0;
