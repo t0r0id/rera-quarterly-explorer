@@ -1,0 +1,13 @@
+# dependencies and framework output
+node_modules/
+.next/
+out/
+
+# environment and local editor files
+.env*
+!.env.example
+.DS_Store
+*.log
+
+# Vercel local state
+.vercel/
