@@ -6,6 +6,15 @@
 .workspace { max-width:1800px; margin:auto; display:grid; grid-template-columns:270px minmax(0,1fr); gap:16px; }.sidebar,.table-panel { background:var(--panel); border:1px solid var(--line); }.sidebar { padding:18px; align-self:start; max-height:calc(100vh - 220px); overflow:auto; }.filter-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:14px; }.filter-head h2 { font:600 17px Georgia, "Times New Roman", serif; margin:0; }.filter-head button { background:none; border:0; color:var(--green); text-decoration:underline; font-size:12px; }
 .filter { border:0; border-top:1px solid var(--line); margin:0; padding:15px 0; }.filter legend { width:100%; display:flex; justify-content:space-between; padding:0; font-weight:600; }.filter legend span { color:var(--mute); font:400 11px Menlo, Consolas, monospace; }.filter input[type=text],.filter input:not([type=checkbox]) { width:100%; margin-top:10px; border:1px solid var(--line); border-radius:0; padding:8px; background:#fbfcf9; color:var(--ink); }.choices { max-height:136px; overflow:auto; margin-top:8px; }.choices label { display:flex; align-items:start; gap:8px; padding:4px 0; font-size:12px; line-height:1.35; }.choices input { accent-color:var(--green); margin:2px 0 0; }.dates { display:grid; gap:7px; }.switch { border-top:1px solid var(--line); padding-top:15px; display:flex; gap:8px; align-items:center; font-size:12px; font-weight:600; }.switch input { accent-color:var(--green); }
 .unit-fields { display:grid; grid-template-columns:1fr 1fr; gap:7px; }.unit-fields input[type=number] { min-width:0; }
+.metric { display:flex; flex-direction:column; min-width:0; }
+.metric-history { margin:14px 0 0; padding-top:10px; border-top:1px solid var(--line); font:11px/1.6 Menlo, Consolas, monospace; font-variant-numeric:tabular-nums; }
+.metric-history > div { display:flex; justify-content:space-between; gap:8px; }
+.metric-history dt { color:var(--mute); white-space:nowrap; }
+.metric-history dd { margin:0; font-weight:600; white-space:nowrap; }
+.metric:last-child .metric-history { border-color:#ffffff40; }
+.metric:last-child .metric-history dt { color:#cde7dc; }
+.metric-note { max-width:1800px; margin:-8px auto 16px; color:var(--mute); font-size:11px; line-height:1.5; }
+@media (min-width:851px) { .metric-history { margin-top:auto; } .metric strong { margin-bottom:14px; } }
 .choices { max-height:144px; overflow-y:auto; overflow-anchor:none; contain:layout paint; }
 .choices label { align-items:center; padding:0; }
 .choices label span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

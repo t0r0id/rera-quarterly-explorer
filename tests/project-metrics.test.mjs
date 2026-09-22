@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { inventoryStats, latestBooking, numeric, totalUnits, value } from "../lib/project-metrics.ts";
+import { inventoryStats, latestBooking, numeric, quarterlyInventoryStats, totalUnits, value } from "../lib/project-metrics.ts";
 
 const orchard = {
   "Project Name": "GODREJ LAKESIDE ORCHARD",
@@ -52,4 +52,23 @@ test("no quarterly booking retains project inventory but excludes it from publis
     inventory: 1170, reportedInventory: 970, booked: 837, pct: 837 / 970 * 100,
   });
   assert.equal(totalUnits({ "Total Units": "NA" }), null);
+});
+
+test("dated metrics use same-quarter inventory and bookings without carrying reports forward", () => {
+  const oldReport = { "Total Units": "150", "Units Booked (Q4_FY25-26)": "20", "Units Available (Q4_FY25-26)": "80" };
+  assert.deepEqual(quarterlyInventoryStats([orchard, oldReport], "Q4_FY25-26"), {
+    inventory: 1070, reportedInventory: 1070, booked: 698, pct: 698 / 1070 * 100,
+  });
+  assert.deepEqual(quarterlyInventoryStats([orchard, oldReport], "Q1_FY26-27"), {
+    inventory: 970, reportedInventory: 970, booked: 837, pct: 837 / 970 * 100,
+  });
+  assert.deepEqual(quarterlyInventoryStats([orchard], "Q3_FY25-26"), {
+    inventory: 0, reportedInventory: 0, booked: null, pct: null,
+  });
+});
+
+test("dated metrics distinguish zero sales from missing sales and fall back to project inventory", () => {
+  assert.deepEqual(quarterlyInventoryStats([{ "Total Units": "120", "Units Booked (Q3_FY25-26)": "0" }], "Q3_FY25-26"), {
+    inventory: 120, reportedInventory: 120, booked: 0, pct: 0,
+  });
 });

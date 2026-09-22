@@ -6,6 +6,14 @@ const quarters = [
   ["Q3_FY25-26", "Q3 FY25–26"],
 ] as const;
 
+export const reportingPeriods = [
+  { suffix: "Q3_FY25-26", label: "Dec 2025" },
+  { suffix: "Q4_FY25-26", label: "Mar 2026" },
+  { suffix: "Q1_FY26-27", label: "Jun 2026" },
+] as const;
+
+export type ReportingPeriod = typeof reportingPeriods[number]["suffix"];
+
 export function numeric(value: string | undefined): number | null {
   if (!value?.trim()) return null;
   const number = Number(value.replaceAll(",", "").trim());
@@ -59,4 +67,30 @@ export function inventoryStats(projects: Project[]) {
     }
   }
   return { inventory, reportedInventory, booked, pct: reportedInventory ? booked / reportedInventory * 100 : 0 };
+}
+
+// Dated comparisons use only that quarter's report, never a different quarter.
+export function quarterlyInventoryStats(projects: Project[], suffix: ReportingPeriod) {
+  let inventory = 0;
+  let reportedInventory = 0;
+  let booked = 0;
+  let publishedCount = 0;
+  for (const project of projects) {
+    const periodBooked = numeric(project[`Units Booked (${suffix})`]);
+    if (periodBooked === null) continue;
+    const available = numeric(project[`Units Available (${suffix})`]);
+    const units = available !== null
+      ? periodBooked + available
+      : numeric(project["Total Units"]) ?? 0;
+    inventory += units;
+    publishedCount++;
+    reportedInventory += units;
+    booked += periodBooked;
+  }
+  return {
+    inventory,
+    reportedInventory,
+    booked: publishedCount ? booked : null,
+    pct: reportedInventory > 0 ? booked / reportedInventory * 100 : null,
+  };
 }
