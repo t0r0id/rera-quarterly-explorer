@@ -2,7 +2,20 @@
   "name": "rera-quarterly-explorer",
   "private": true,
   "version": "1.0.0",
-  "scripts": { "dev": "next dev", "build": "next build", "start": "next start" },
-  "dependencies": { "next": "15.5.2", "react": "19.1.1", "react-dom": "19.1.1" },
-  "devDependencies": { "@types/node": "22.15.3", "@types/react": "19.1.2", "@types/react-dom": "19.1.2", "typescript": "5.8.3" }
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^16.3.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "typescript": "5.8.3"
+  }
 }
