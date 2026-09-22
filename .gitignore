@@ -11,3 +11,4 @@ out/
 
 # Vercel local state
 .vercel/
+.vercel
