@@ -100,7 +100,10 @@ export function quarterlyInventoryStats(projects: Project[], suffix: ReportingPe
   let availableCount = 0;
   for (const project of projects) {
     const report = bookingForPeriod(project, suffix);
-    if (!report) continue;
+    if (!report) {
+      inventory += numeric(project["Total Units"]) ?? 0;
+      continue;
+    }
     const periodBooked = report.booked;
     const available = report.available;
     const units = available !== null

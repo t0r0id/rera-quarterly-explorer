@@ -60,10 +60,10 @@ test("dated metrics use same-quarter inventory and bookings without carrying rep
     inventory: 1070, reportedInventory: 1070, booked: 698, unsold: 372, pct: 698 / 1070 * 100,
   });
   assert.deepEqual(quarterlyInventoryStats([orchard, oldReport], "Q1_FY26-27"), {
-    inventory: 970, reportedInventory: 970, booked: 837, unsold: 133, pct: 837 / 970 * 100,
+    inventory: 1120, reportedInventory: 970, booked: 837, unsold: 133, pct: 837 / 970 * 100,
   });
   assert.deepEqual(quarterlyInventoryStats([orchard], "Q3_FY25-26"), {
-    inventory: 0, reportedInventory: 0, booked: null, unsold: null, pct: null,
+    inventory: 698, reportedInventory: 0, booked: null, unsold: null, pct: null,
   });
 });
 
@@ -93,4 +93,14 @@ test("March carries December booked, inventory and availability together, markin
   assert.deepEqual(quarterlyInventoryStats([march], "Q4_FY25-26"), {
     inventory: 150, reportedInventory: 150, booked: 0, unsold: null, pct: 0,
   });
+});
+
+test("dated Inventory includes unreported projects while the sales denominator excludes them", () => {
+  const december = { "Total Units": "150", "Units Booked (Q3_FY25-26)": "20", "Units Available (Q3_FY25-26)": "80" };
+  const unpublished = { "Total Units": "250" };
+  for (const suffix of ["Q3_FY25-26", "Q4_FY25-26"]) {
+    assert.deepEqual(quarterlyInventoryStats([december, unpublished], suffix), {
+      inventory: 350, reportedInventory: 100, booked: 20, unsold: 80, pct: 20,
+    });
+  }
 });
