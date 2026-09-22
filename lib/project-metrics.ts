@@ -87,7 +87,7 @@ export function inventoryStats(projects: Project[]) {
       }
     }
   }
-  return { inventory, reportedInventory, booked, unsold: availableCount ? unsold : null, pct: reportedInventory ? booked / reportedInventory * 100 : 0 };
+  return { inventory, reportedInventory, unknownInventory: inventory - reportedInventory, booked, unsold: availableCount ? unsold : null, pct: reportedInventory ? booked / reportedInventory * 100 : 0 };
 }
 
 // March carries December reports forward when March bookings are missing.
@@ -125,6 +125,7 @@ export function quarterlyInventoryStats(projects: Project[], suffix: ReportingPe
   return {
     inventory,
     reportedInventory,
+    unknownInventory: inventory - reportedInventory,
     booked: publishedCount ? booked : null,
     unsold: availableCount ? unsold : null,
     pct: reportedInventory > 0 ? booked / reportedInventory * 100 : null,
