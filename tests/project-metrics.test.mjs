@@ -175,3 +175,24 @@ test("historical project counts include month-end approvals and exclude later or
   assert.equal(projectCountForPeriod(projects, "Q3_FY25-26"), 1);
   assert.equal(projectCountForPeriod(projects, "Q4_FY25-26"), 3);
 });
+
+test("unsold columns read the same report as their adjacent booked column", () => {
+  const project = { ...orchard, "Units Booked (Q3_FY25-26)": "500", "Units Available (Q3_FY25-26)": "470" };
+  assert.equal(value(project, "Units Available (Q1_FY26-27)"), 133);
+  assert.equal(value(project, "Units Available (Q4_FY25-26)"), 292);
+  assert.equal(value(project, "Units Available (Q3_FY25-26)"), 470);
+  const noJune = { ...project, "Units Booked (Q1_FY26-27)": "NA" };
+  assert.equal(value(noJune, "Units Available (Q1_FY26-27)"), 292);
+  const onlyDecember = { ...noJune, "Units Booked (Q4_FY25-26)": "NA" };
+  assert.equal(value(onlyDecember, "Units Available (Q4_FY25-26)"), 470);
+  assert.equal(value(onlyDecember, "Units Available (Q1_FY26-27)"), 470);
+});
+
+test("unsold columns preserve zero and leave missing availability unknown", () => {
+  for (const period of ["Q1_FY26-27", "Q4_FY25-26", "Q3_FY25-26"]) {
+    const project = { ...orchard, [`Units Booked (${period})`]: "10", [`Units Available (${period})`]: "0" };
+    assert.equal(value(project, `Units Available (${period})`), 0);
+    project[`Units Available (${period})`] = "NA";
+    assert.equal(value(project, `Units Available (${period})`), null);
+  }
+});

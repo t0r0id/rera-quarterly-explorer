@@ -70,6 +70,9 @@ export function value(project: Project, key: string): string | number | null {
   if (key === "Total Units") return totalUnits(project);
   if (key === "Units Booked (Q1_FY26-27)") return latestBooking(project)?.booked ?? null;
   if (key === "Units Booked (Q4_FY25-26)") return bookingForPeriod(project, "Q4_FY25-26")?.booked ?? null;
+  if (key === "Units Available (Q1_FY26-27)") return latestBooking(project)?.available ?? null;
+  if (key === "Units Available (Q4_FY25-26)") return bookingForPeriod(project, "Q4_FY25-26")?.available ?? null;
+  if (key === "Units Available (Q3_FY25-26)") return numeric(project[key]);
   if (key === "bookedPercent") {
     const booking = latestBooking(project);
     const units = totalUnits(project);

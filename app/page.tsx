@@ -8,11 +8,12 @@ type Column = readonly [string, string];
 
 const columns: Column[] = [
   ["Project Name", "Project Name"], ["Approved On", "Approved On"], ["Proposed Completion Date", "Proposed Completion Date"],
-  ["Total Units", "Total Units"], ["Units Booked (Q1_FY26-27)", "Booked · Jun 2026"], ["bookedPercent", "Booked %"],
+  ["Total Units", "Total Units"], ["Units Booked (Q1_FY26-27)", "Booked · Jun 2026"], ["Units Available (Q1_FY26-27)", "Unsold · Jun 2026"], ["bookedPercent", "Booked %"],
   ["Builder", "Builder"], ["Promoter Name", "Promoter Name"], ["District", "District"], ["Taluka", "Taluka"], ["Project Type", "Project Type"],
   ["Proposed Completion Date At Registration", "Proposed Completion Date At Registration"], ["Project Address", "Project Address"],
   ["Has Quarterly Update", "Has Quarterly Update"],
-  ["Units Booked (Q3_FY25-26)", "Booked · Dec 2025"], ["Units Booked (Q4_FY25-26)", "Booked · Mar 2026"],
+  ["Units Booked (Q3_FY25-26)", "Booked · Dec 2025"], ["Units Available (Q3_FY25-26)", "Unsold · Dec 2025"],
+  ["Units Booked (Q4_FY25-26)", "Booked · Mar 2026"], ["Units Available (Q4_FY25-26)", "Unsold · Mar 2026"],
   ["Registration Number", "RERA ID"],
 ] as const;
 const PAGE_SIZE = 100;
@@ -107,18 +108,20 @@ const ProjectRow = memo(function ProjectRow({ project: p, columnOrder }: { proje
   const mapUrl = googleMapsUrl(p);
   return <tr>{columnOrder.map(([key]) => {
     const v = value(p, key);
-    const cellBooking = key === "Units Booked (Q4_FY25-26)" ? bookingForPeriod(p, "Q4_FY25-26") : booking;
-    const hasFallback = (key === "Units Booked (Q1_FY26-27)" || key === "Units Booked (Q4_FY25-26)" || key === "bookedPercent") && cellBooking?.fallback;
+    const isMarch = key.endsWith("(Q4_FY25-26)");
+    const isQuarterCount = key.startsWith("Units Booked (") || key.startsWith("Units Available (");
+    const cellBooking = isMarch ? bookingForPeriod(p, "Q4_FY25-26") : key.endsWith("(Q3_FY25-26)") ? bookingForPeriod(p, "Q3_FY25-26") : booking;
+    const hasFallback = v !== null && (isQuarterCount || key === "bookedPercent") && cellBooking?.fallback;
     const title = key === "Total Units"
       ? booking && booking.available !== null
         ? `${booking.quarter}: ${booking.booked} booked + ${booking.available} available = ${v} units`
         : "Project-details inventory; a complete quarterly booked/available pair is unavailable"
-      : hasFallback ? `${cellBooking?.quarter} used because ${key === "Units Booked (Q4_FY25-26)" ? "Mar" : "Jun"} 2026 is unavailable` : String(v ?? "—");
+      : hasFallback ? `${cellBooking?.quarter} used because ${isMarch ? "Mar" : "Jun"} 2026 is unavailable` : String(v ?? "—");
     return <td key={key} title={title}>{
       key === "Project Name" ? <>{v ?? "—"}{mapUrl && <a className="map-link" href={mapUrl} target="_blank" rel="noreferrer">Map ↗</a>}</> :
       key === "Has Quarterly Update" ? <span className={v === "Yes" ? "tag yes" : "tag"}>{v === "Yes" ? "Yes" : "No"}</span> :
       key === "bookedPercent" ? v === null ? "—" : <span className="fill" style={{ "--fill": `${Math.min(100, v as number)}%` } as React.CSSProperties}><b>{(v as number).toFixed(1)}%{hasFallback && <sup>*</sup>}</b></span> :
-      (key === "Units Booked (Q1_FY26-27)" || key === "Units Booked (Q4_FY25-26)") ? <>{v ?? "—"}{hasFallback && <sup>*</sup>}</> : v ?? "—"
+      isQuarterCount ? <>{v ?? "—"}{hasFallback && <sup>*</sup>}</> : v ?? "—"
     }</td>;
   })}</tr>;
 });
