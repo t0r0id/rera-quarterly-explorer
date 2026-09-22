@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 
-type Project = Record<string, string>;
+import { inventoryStats, latestBooking, numeric, totalUnits, value, type Project } from "../lib/project-metrics";
 type Sort = { key: string; direction: "asc" | "desc" };
 type Column = readonly [string, string];
 
@@ -31,9 +31,6 @@ function parseCsv(text: string): Project[] {
   return body.map(values => Object.fromEntries(headers.map((h, i) => [h, values[i] ?? ""]))).filter(p => p["Registration Number"]);
 }
 
-function numeric(value: string | undefined) { const n = Number((value || "").replaceAll(",", "")); return Number.isFinite(n) ? n : null; }
-function latestBooking(p: Project) { const quarters = [["Units Booked (Q1_FY26-27)", "Q1 FY26–27"], ["Units Booked (Q4_FY25-26)", "Q4 FY25–26"], ["Units Booked (Q3_FY25-26)", "Q3 FY25–26"]] as const; for (let index = 0; index < quarters.length; index++) { const [key, quarter] = quarters[index]; const booked = numeric(p[key]); if (booked !== null) return { booked, quarter, fallback: index > 0 }; } return null; }
-function value(p: Project, key: string) { const booking = latestBooking(p); if (key === "Units Booked (Q1_FY26-27)") return booking?.booked ?? null; if (key === "bookedPercent") { const d = numeric(p["Total Units"]); return booking && d ? (booking.booked / d) * 100 : null; } return p[key] || null; }
 function dateInRange(v: string, start: string, end: string) { return (!start || v >= start) && (!end || v <= end); }
 function googleMapsUrl(p: Project) { const lat = numeric(p.Latitude); const lng = numeric(p.Longitude); return lat !== null && lng !== null ? `https://www.google.com/maps?q=${lat},${lng}` : null; }
 
@@ -74,9 +71,9 @@ export default function Home() {
   useEffect(() => { fetch("/projects.csv").then(r => r.text()).then(t => setProjects(parseCsv(t))); }, []);
   const filterOptions = useMemo(() => Object.fromEntries(["Taluka", "Builder", "Promoter Name", "Project Type"].map(key => [key, [...new Set(projects.map(p => p[key]).filter(v => v && v !== "NA"))].sort((a, b) => a.localeCompare(b))])), [projects]);
   const options = (key: string) => filterOptions[key];
-  const unitsBounds = useMemo(() => { const units = projects.map(p => numeric(p["Total Units"])).filter((n): n is number => n !== null); return units.length ? [Math.min(...units), Math.max(...units)] as [number, number] : null; }, [projects]);
-  const filtered = useMemo(() => projects.filter(p => { const units = numeric(p["Total Units"]); return (!builders.length || builders.includes(p.Builder)) && (!promoters.length || promoters.includes(p["Promoter Name"])) && (!talukas.length || talukas.includes(p.Taluka)) && (!types.length || types.includes(p["Project Type"])) && (!hasUpdate || p["Has Quarterly Update"] === "Yes") && (!minimumUnits || (units !== null && units >= Number(minimumUnits))) && (!maximumUnits || (units !== null && units <= Number(maximumUnits))) && dateInRange(p["Proposed Completion Date"] || "", completionStart, completionEnd) && dateInRange(p["Approved On"] || "", approvalStart, approvalEnd); }).sort((a,b) => { const av = value(a, sort.key), bv = value(b, sort.key); const missingA = av === null || av === "NA" || av === ""; const missingB = bv === null || bv === "NA" || bv === ""; if (missingA || missingB) return missingA === missingB ? 0 : missingA ? 1 : -1; const an = typeof av === "number" ? av : numeric(av as string); const bn = typeof bv === "number" ? bv : numeric(bv as string); const c = an !== null && bn !== null ? an - bn : String(av).localeCompare(String(bv)); return sort.direction === "asc" ? c : -c; }), [projects, builders, promoters, talukas, types, completionStart, completionEnd, approvalStart, approvalEnd, minimumUnits, maximumUnits, hasUpdate, sort]);
-  const stats = useMemo(() => { let inventory = 0; let reportedInventory = 0; let booked = 0; for (const project of filtered) { const units = numeric(project["Total Units"]) || 0; const booking = latestBooking(project); inventory += units; if (booking) { reportedInventory += units; booked += booking.booked; } } return { inventory, reportedInventory, booked, pct: reportedInventory ? booked / reportedInventory * 100 : 0 }; }, [filtered]);
+  const unitsBounds = useMemo(() => { const units = projects.map(p => totalUnits(p)).filter((n): n is number => n !== null); return units.length ? [Math.min(...units), Math.max(...units)] as [number, number] : null; }, [projects]);
+  const filtered = useMemo(() => projects.filter(p => { const units = totalUnits(p); return (!builders.length || builders.includes(p.Builder)) && (!promoters.length || promoters.includes(p["Promoter Name"])) && (!talukas.length || talukas.includes(p.Taluka)) && (!types.length || types.includes(p["Project Type"])) && (!hasUpdate || p["Has Quarterly Update"] === "Yes") && (!minimumUnits || (units !== null && units >= Number(minimumUnits))) && (!maximumUnits || (units !== null && units <= Number(maximumUnits))) && dateInRange(p["Proposed Completion Date"] || "", completionStart, completionEnd) && dateInRange(p["Approved On"] || "", approvalStart, approvalEnd); }).sort((a,b) => { const av = value(a, sort.key), bv = value(b, sort.key); const missingA = av === null || av === "NA" || av === ""; const missingB = bv === null || bv === "NA" || bv === ""; if (missingA || missingB) return missingA === missingB ? 0 : missingA ? 1 : -1; const an = typeof av === "number" ? av : numeric(av as string); const bn = typeof bv === "number" ? bv : numeric(bv as string); const c = an !== null && bn !== null ? an - bn : String(av).localeCompare(String(bv)); return sort.direction === "asc" ? c : -c; }), [projects, builders, promoters, talukas, types, completionStart, completionEnd, approvalStart, approvalEnd, minimumUnits, maximumUnits, hasUpdate, sort]);
+  const stats = useMemo(() => inventoryStats(filtered), [filtered]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); const currentPage = Math.min(page, pageCount - 1); const visibleProjects = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
   const clear = () => { setBuilders([]); setPromoters([]); setTalukas([]); setTypes([]); setCompletionStart(""); setCompletionEnd(""); setApprovalStart(""); setApprovalEnd(""); setMinimumUnits(""); setMaximumUnits(""); setHasUpdate(true); setPage(0); };
   const sortBy = (key: string) => { setSort(s => ({ key, direction: s.key === key && s.direction === "asc" ? "desc" : "asc" })); setPage(0); };
@@ -97,7 +94,11 @@ const ProjectRow = memo(function ProjectRow({ project: p, columnOrder }: { proje
   return <tr>{columnOrder.map(([key]) => {
     const v = value(p, key);
     const hasFallback = (key === "Units Booked (Q1_FY26-27)" || key === "bookedPercent") && booking?.fallback;
-    const title = hasFallback ? `${booking?.quarter} used because Q1 FY26–27 is unavailable` : String(v ?? "—");
+    const title = key === "Total Units"
+      ? booking && booking.available !== null
+        ? `${booking.quarter}: ${booking.booked} booked + ${booking.available} available = ${v} units`
+        : "Project-details inventory; a complete quarterly booked/available pair is unavailable"
+      : hasFallback ? `${booking?.quarter} used because Q1 FY26–27 is unavailable` : String(v ?? "—");
     return <td key={key} title={title}>{
       key === "Project Name" ? <>{v ?? "—"}{mapUrl && <a className="map-link" href={mapUrl} target="_blank" rel="noreferrer">Map ↗</a>}</> :
       key === "Has Quarterly Update" ? <span className={v === "Yes" ? "tag yes" : "tag"}>{v === "Yes" ? "Yes" : "No"}</span> :
