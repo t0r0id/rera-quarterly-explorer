@@ -16,7 +16,7 @@ test("Orchard uses 970 across displayed units, percentage, and aggregates", () =
   assert.equal(value(orchard, "Total Units"), 970);
   assert.equal(value(orchard, "bookedPercent").toFixed(1), "86.3");
   assert.deepEqual(inventoryStats([orchard]), {
-    inventory: 970, reportedInventory: 970, booked: 837, pct: 837 / 970 * 100,
+    inventory: 970, reportedInventory: 970, booked: 837, unsold: 133, pct: 837 / 970 * 100,
   });
 });
 
@@ -49,7 +49,7 @@ test("no quarterly booking retains project inventory but excludes it from publis
   assert.equal(totalUnits(unpublished), 200);
   assert.equal(value(unpublished, "bookedPercent"), null);
   assert.deepEqual(inventoryStats([orchard, unpublished]), {
-    inventory: 1170, reportedInventory: 970, booked: 837, pct: 837 / 970 * 100,
+    inventory: 1170, reportedInventory: 970, booked: 837, unsold: 133, pct: 837 / 970 * 100,
   });
   assert.equal(totalUnits({ "Total Units": "NA" }), null);
 });
@@ -57,18 +57,40 @@ test("no quarterly booking retains project inventory but excludes it from publis
 test("dated metrics use same-quarter inventory and bookings without carrying reports forward", () => {
   const oldReport = { "Total Units": "150", "Units Booked (Q4_FY25-26)": "20", "Units Available (Q4_FY25-26)": "80" };
   assert.deepEqual(quarterlyInventoryStats([orchard, oldReport], "Q4_FY25-26"), {
-    inventory: 1070, reportedInventory: 1070, booked: 698, pct: 698 / 1070 * 100,
+    inventory: 1070, reportedInventory: 1070, booked: 698, unsold: 372, pct: 698 / 1070 * 100,
   });
   assert.deepEqual(quarterlyInventoryStats([orchard, oldReport], "Q1_FY26-27"), {
-    inventory: 970, reportedInventory: 970, booked: 837, pct: 837 / 970 * 100,
+    inventory: 970, reportedInventory: 970, booked: 837, unsold: 133, pct: 837 / 970 * 100,
   });
   assert.deepEqual(quarterlyInventoryStats([orchard], "Q3_FY25-26"), {
-    inventory: 0, reportedInventory: 0, booked: null, pct: null,
+    inventory: 0, reportedInventory: 0, booked: null, unsold: null, pct: null,
   });
 });
 
 test("dated metrics distinguish zero sales from missing sales and fall back to project inventory", () => {
   assert.deepEqual(quarterlyInventoryStats([{ "Total Units": "120", "Units Booked (Q3_FY25-26)": "0" }], "Q3_FY25-26"), {
-    inventory: 120, reportedInventory: 120, booked: 0, pct: 0,
+    inventory: 120, reportedInventory: 120, booked: 0, unsold: null, pct: 0,
+  });
+});
+
+test("unsold uses availability from the selected report and never infers missing values", () => {
+  assert.equal(inventoryStats([orchard]).unsold, 133);
+  assert.equal(inventoryStats([{ ...orchard, "Units Booked (Q1_FY26-27)": "NA" }]).unsold, 292);
+  assert.equal(inventoryStats([{ ...orchard, "Units Available (Q1_FY26-27)": "NA" }]).unsold, null);
+  assert.equal(inventoryStats([{ ...orchard, "Units Available (Q1_FY26-27)": "0" }]).unsold, 0);
+  assert.equal(quarterlyInventoryStats([{ ...orchard, "Units Available (Q4_FY25-26)": "0" }], "Q4_FY25-26").unsold, 0);
+  assert.equal(quarterlyInventoryStats([{ ...orchard, "Units Booked (Q1_FY26-27)": "NA" }], "Q1_FY26-27").unsold, null);
+});
+
+test("March carries December booked, inventory and availability together, marking table fallback", () => {
+  const december = { "Total Units": "150", "Units Booked (Q3_FY25-26)": "20", "Units Available (Q3_FY25-26)": "80" };
+  assert.deepEqual(quarterlyInventoryStats([orchard, december], "Q4_FY25-26"), {
+    inventory: 1070, reportedInventory: 1070, booked: 698, unsold: 372, pct: 698 / 1070 * 100,
+  });
+  assert.equal(value(december, "Units Booked (Q4_FY25-26)"), 20);
+  // A March zero is a report; missing March availability does not borrow December's.
+  const march = { ...december, "Units Booked (Q4_FY25-26)": "0" };
+  assert.deepEqual(quarterlyInventoryStats([march], "Q4_FY25-26"), {
+    inventory: 150, reportedInventory: 150, booked: 0, unsold: null, pct: 0,
   });
 });

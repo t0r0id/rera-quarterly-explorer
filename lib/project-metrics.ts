@@ -35,6 +35,20 @@ export function latestBooking(project: Project) {
   return null;
 }
 
+export function bookingForPeriod(project: Project, suffix: ReportingPeriod) {
+  const candidates = suffix === "Q4_FY25-26" ? ["Q4_FY25-26", "Q3_FY25-26"] : [suffix];
+  for (const candidate of candidates) {
+    const booked = numeric(project[`Units Booked (${candidate})`]);
+    if (booked !== null) return {
+      booked,
+      available: numeric(project[`Units Available (${candidate})`]),
+      quarter: reportingPeriods.find(period => period.suffix === candidate)!.label,
+      fallback: candidate !== suffix,
+    };
+  }
+  return null;
+}
+
 export function totalUnits(project: Project): number | null {
   const booking = latestBooking(project);
   return booking && booking.available !== null
@@ -45,6 +59,7 @@ export function totalUnits(project: Project): number | null {
 export function value(project: Project, key: string): string | number | null {
   if (key === "Total Units") return totalUnits(project);
   if (key === "Units Booked (Q1_FY26-27)") return latestBooking(project)?.booked ?? null;
+  if (key === "Units Booked (Q4_FY25-26)") return bookingForPeriod(project, "Q4_FY25-26")?.booked ?? null;
   if (key === "bookedPercent") {
     const booking = latestBooking(project);
     const units = totalUnits(project);
@@ -57,6 +72,8 @@ export function inventoryStats(projects: Project[]) {
   let inventory = 0;
   let reportedInventory = 0;
   let booked = 0;
+  let unsold = 0;
+  let availableCount = 0;
   for (const project of projects) {
     const units = totalUnits(project) ?? 0;
     const booking = latestBooking(project);
@@ -64,21 +81,28 @@ export function inventoryStats(projects: Project[]) {
     if (booking) {
       reportedInventory += units;
       booked += booking.booked;
+      if (booking.available !== null) {
+        unsold += booking.available;
+        availableCount++;
+      }
     }
   }
-  return { inventory, reportedInventory, booked, pct: reportedInventory ? booked / reportedInventory * 100 : 0 };
+  return { inventory, reportedInventory, booked, unsold: availableCount ? unsold : null, pct: reportedInventory ? booked / reportedInventory * 100 : 0 };
 }
 
-// Dated comparisons use only that quarter's report, never a different quarter.
+// March carries December reports forward when March bookings are missing.
 export function quarterlyInventoryStats(projects: Project[], suffix: ReportingPeriod) {
   let inventory = 0;
   let reportedInventory = 0;
   let booked = 0;
   let publishedCount = 0;
+  let unsold = 0;
+  let availableCount = 0;
   for (const project of projects) {
-    const periodBooked = numeric(project[`Units Booked (${suffix})`]);
-    if (periodBooked === null) continue;
-    const available = numeric(project[`Units Available (${suffix})`]);
+    const report = bookingForPeriod(project, suffix);
+    if (!report) continue;
+    const periodBooked = report.booked;
+    const available = report.available;
     const units = available !== null
       ? periodBooked + available
       : numeric(project["Total Units"]) ?? 0;
@@ -86,11 +110,16 @@ export function quarterlyInventoryStats(projects: Project[], suffix: ReportingPe
     publishedCount++;
     reportedInventory += units;
     booked += periodBooked;
+    if (available !== null) {
+      unsold += available;
+      availableCount++;
+    }
   }
   return {
     inventory,
     reportedInventory,
     booked: publishedCount ? booked : null,
+    unsold: availableCount ? unsold : null,
     pct: reportedInventory > 0 ? booked / reportedInventory * 100 : null,
   };
 }
