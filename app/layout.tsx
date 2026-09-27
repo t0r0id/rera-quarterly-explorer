@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "RERA Quarterly Explorer",
-  description: "Bengaluru Urban RERA project inventory explorer",
+  description: "Bengaluru Urban and Rural RERA project inventory explorer",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
