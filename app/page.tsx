@@ -8,12 +8,13 @@ type Column = readonly [string, string];
 
 const columns: Column[] = [
   ["Project Name", "Project Name"], ["Approved On", "Approved On"], ["Proposed Completion Date", "Proposed Completion Date"],
-  ["Total Units", "Total Units"], ["Units Booked (Q1_FY26-27)", "Booked · Jun 2026"], ["Units Available (Q1_FY26-27)", "Unsold · Jun 2026"], ["bookedPercent", "Booked %"],
+  ["Total Units", "Total Units"], ["Units Booked (Q2_FY26-27)", "Booked · Sep 2026"], ["Units Available (Q2_FY26-27)", "Unsold · Sep 2026"], ["bookedPercent", "Booked %"],
   ["Builder", "Builder"], ["Promoter Name", "Promoter Name"], ["District", "District"], ["Taluka", "Taluka"], ["Project Type", "Project Type"],
   ["Proposed Completion Date At Registration", "Proposed Completion Date At Registration"], ["Project Address", "Project Address"],
   ["Has Quarterly Update", "Has Quarterly Update"],
   ["Units Booked (Q3_FY25-26)", "Booked · Dec 2025"], ["Units Available (Q3_FY25-26)", "Unsold · Dec 2025"],
   ["Units Booked (Q4_FY25-26)", "Booked · Mar 2026"], ["Units Available (Q4_FY25-26)", "Unsold · Mar 2026"],
+  ["Units Booked (Q1_FY26-27)", "Booked · Jun 2026"], ["Units Available (Q1_FY26-27)", "Unsold · Jun 2026"],
   ["Registration Number", "RERA ID"],
 ] as const;
 const PAGE_SIZE = 100;
@@ -112,7 +113,7 @@ export default function Home() {
   const unitsBounds = useMemo(() => { const units = projects.map(p => totalUnits(p)).filter((n): n is number => n !== null); return units.length ? [Math.min(...units), Math.max(...units)] as [number, number] : null; }, [projects]);
   const filtered = useMemo(() => projects.filter(p => { const units = totalUnits(p); return Object.entries(columnSearch).every(([key, query]) => !query.trim() || (p[key] ?? "").toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) && (!projectNames.length || projectNames.includes(p["Project Name"])) && (!districts.length || districts.includes(p.District)) && (!builders.length || builders.includes(p.Builder)) && (!promoters.length || promoters.includes(p["Promoter Name"])) && (!talukas.length || talukas.includes(p.Taluka)) && (!types.length || types.includes(p["Project Type"])) && (!hasUpdate || p["Has Quarterly Update"] === "Yes") && (!minimumUnits || (units !== null && units >= Number(minimumUnits))) && (!maximumUnits || (units !== null && units <= Number(maximumUnits))) && dateInRange(p["Proposed Completion Date"] || "", completionStart, completionEnd) && dateInRange(p["Approved On"] || "", approvalStart, approvalEnd); }).sort((a,b) => { const av = value(a, sort.key), bv = value(b, sort.key); const missingA = av === null || av === "NA" || av === ""; const missingB = bv === null || bv === "NA" || bv === ""; if (missingA || missingB) return missingA === missingB ? 0 : missingA ? 1 : -1; const an = typeof av === "number" ? av : numeric(av as string); const bn = typeof bv === "number" ? bv : numeric(bv as string); const c = an !== null && bn !== null ? an - bn : String(av).localeCompare(String(bv)); return sort.direction === "asc" ? c : -c; }), [projects, columnSearch, projectNames, districts, builders, promoters, talukas, types, completionStart, completionEnd, approvalStart, approvalEnd, minimumUnits, maximumUnits, hasUpdate, sort]);
   const stats = useMemo(() => inventoryStats(filtered), [filtered]);
-  const datedStats = useMemo(() => reportingPeriods.filter(period => period.suffix !== "Q1_FY26-27").map(period => ({
+  const datedStats = useMemo(() => reportingPeriods.filter(period => period.suffix !== "Q2_FY26-27").map(period => ({
     label: period.label,
     projects: projectCountForPeriod(filtered, period.suffix),
     ...quarterlyInventoryStats(filtered, period.suffix),
@@ -133,7 +134,7 @@ export default function Home() {
       <label className="switch"><input type="checkbox" checked={hasUpdate} onChange={e => setHasUpdate(e.target.checked)} /><span>Has latest quarterly update</span></label></aside>
       <section className="table-panel"><div className="table-meta"><span>{filtered.length ? `${(currentPage * PAGE_SIZE + 1).toLocaleString("en-IN")}–${Math.min((currentPage + 1) * PAGE_SIZE, filtered.length).toLocaleString("en-IN")} of ${filtered.length.toLocaleString("en-IN")} projects` : "0 matching projects"}</span><span>Drag headings to reorder · Drag edges to resize · Click to sort · <b>*</b> Earlier report used where the labelled period is missing</span></div><div className="table-wrap" onScroll={() => setTooltip(null)} onMouseOver={event => showCellTooltip(event.target)} onMouseLeave={() => setTooltip(null)} onFocus={event => showCellTooltip(event.target)} onBlur={() => setTooltip(null)} onKeyDown={event => { if (event.key === "Escape") setTooltip(null); }}><table style={{ width: columnOrder.reduce((sum, [key]) => sum + (columnWidths[key] ?? defaultColumnWidth(key)), 0) }}><colgroup>{columnOrder.map(([key]) => <col key={key} style={{ width: columnWidths[key] ?? defaultColumnWidth(key) }} />)}</colgroup><thead><tr>{columnOrder.map(([key,label]) => <th key={key} draggable onDragStart={() => setDraggedColumn(key)} onDragOver={event => event.preventDefault()} onDrop={() => moveColumn(key)} onDragEnd={() => setDraggedColumn(null)} className={draggedColumn === key ? "dragging" : ""}><button onClick={() => sortBy(key)}><span className="drag-handle" aria-hidden="true">⠿</span>{label}<i className={sort.key === key ? "active" : ""}>{sort.key === key ? (sort.direction === "asc" ? "↑" : "↓") : "↕"}</i></button>{columnSearchFields[key] && <input className="column-search" aria-label={columnSearchFields[key]} placeholder={columnSearchFields[key]} value={columnSearch[key] ?? ""} onChange={event => { setColumnSearch(current => ({ ...current, [key]: event.target.value })); setPage(0); }} onDragStart={event => event.preventDefault()} />}<ColumnResizeHandle label={label} width={columnWidths[key] ?? defaultColumnWidth(key)} onResize={width => { setTooltip(null); setColumnWidths(current => ({ ...current, [key]: width })); }} /></th>)}</tr></thead><tbody>{visibleProjects.map(p => <ProjectRow key={p["Registration Number"]} project={p} columnOrder={columnOrder} />)}</tbody></table>{!projects.length && <p className="loading">Loading RERA project data…</p>}{projects.length > 0 && !filtered.length && <p className="loading">No projects match these filters.</p>}</div>{filtered.length > PAGE_SIZE && <nav className="pagination" aria-label="Project table pages"><button onClick={() => setPage(currentPage - 1)} disabled={currentPage === 0}>Previous</button><span>Page {currentPage + 1} of {pageCount}</span><button onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount - 1}>Next</button></nav>}</section></div>
     {tooltip && <div role="tooltip" className="cell-tooltip" style={{ left: tooltip.left, top: tooltip.top, transform: tooltip.above ? "translateY(-100%)" : undefined }}>{tooltip.text}</div>}
-    <p className="metric-note">Dated figures include only filtered projects approved by that month-end (31 Dec 2025 or 31 Mar 2026). Inventory includes projects without sales reports, using project-details units when report data is missing. Unknown counts inventory without a reported booked or available status. Sold and Unsold include published figures only. Percentages use total inventory: Sold + Unsold + Unknown = 100%. Mar 2026 falls back to Dec 2025 when March is missing. Unsold sums reported available units only. * Jun 2026 is the target sales reporting period; missing June reports fall back to earlier data. Headline project and inventory totals include all filtered approvals.</p>
+    <p className="metric-note">Dated figures include only filtered projects approved by that month-end (31 Dec 2025, 31 Mar 2026 or 30 Jun 2026). Inventory includes projects without sales reports, using project-details units when report data is missing. Unknown counts inventory without a reported booked or available status. Sold and Unsold include published figures only. Percentages use total inventory: Sold + Unsold + Unknown = 100%. Mar 2026 falls back to Dec 2025 when March is missing. Unsold sums reported available units only. * Sep 2026 is the target sales reporting period; missing September reports fall back to earlier data. Headline project and inventory totals include all filtered approvals.</p>
     <footer>Creator <a href="https://github.com/t0r0id" target="_blank" rel="noreferrer">GitHub</a><span>·</span><a href="https://www.linkedin.com/in/shahbhoumik/" target="_blank" rel="noreferrer">LinkedIn</a></footer>
   </main>;
 }
@@ -145,13 +146,13 @@ const ProjectRow = memo(function ProjectRow({ project: p, columnOrder }: { proje
     const v = value(p, key);
     const isMarch = key.endsWith("(Q4_FY25-26)");
     const isQuarterCount = key.startsWith("Units Booked (") || key.startsWith("Units Available (");
-    const cellBooking = isMarch ? bookingForPeriod(p, "Q4_FY25-26") : key.endsWith("(Q3_FY25-26)") ? bookingForPeriod(p, "Q3_FY25-26") : booking;
+    const cellBooking = isMarch ? bookingForPeriod(p, "Q4_FY25-26") : key.endsWith("(Q3_FY25-26)") ? bookingForPeriod(p, "Q3_FY25-26") : key.endsWith("(Q1_FY26-27)") ? bookingForPeriod(p, "Q1_FY26-27") : booking;
     const hasFallback = v !== null && (isQuarterCount || key === "bookedPercent") && cellBooking?.fallback;
     const title = key === "Total Units"
       ? booking && booking.available !== null
         ? `${booking.quarter}: ${booking.booked} booked + ${booking.available} available = ${v} units`
         : "Project-details inventory; a complete quarterly booked/available pair is unavailable"
-      : hasFallback ? `${cellBooking?.quarter} used because ${isMarch ? "Mar" : "Jun"} 2026 is unavailable` : String(v ?? "—");
+      : hasFallback ? `${cellBooking?.quarter} used because ${isMarch ? "Mar" : "Sep"} 2026 is unavailable` : String(v ?? "—");
     const displayed = key === "bookedPercent" && typeof v === "number" ? `${v.toFixed(1)}%` : String(v ?? "—");
     const hasNote = key === "Total Units" || Boolean(hasFallback);
     return <td key={key} data-tooltip={hasNote ? `${displayed}\n${title}` : displayed} data-note={hasNote}>{
@@ -164,7 +165,7 @@ const ProjectRow = memo(function ProjectRow({ project: p, columnOrder }: { proje
 });
 
 function Metric({ label, value, history, description, percentage, status }: { label: string; value: string; history?: { label: string; value: string; percentage?: number | null }[]; description?: string; percentage?: number | null; status?: "unknown" | "booked" | "unsold" }) {
-  return <div className={status ? `metric metric--${status}` : "metric"}><span>{label}</span><span className="metric-period">Jun 2026*</span><strong>{value}{percentage !== undefined && <small className="metric-percentage">({percentage === null ? "—" : `${percentage.toFixed(1)}%`})</small>}</strong><small className="metric-description" aria-hidden={!description}>{description || "\u00a0"}</small>
+  return <div className={status ? `metric metric--${status}` : "metric"}><span>{label}</span><span className="metric-period">Sep 2026*</span><strong>{value}{percentage !== undefined && <small className="metric-percentage">({percentage === null ? "—" : `${percentage.toFixed(1)}%`})</small>}</strong><small className="metric-description" aria-hidden={!description}>{description || "\u00a0"}</small>
     {history && <dl className="metric-history">{history.map(row => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}{row.percentage !== undefined && row.percentage !== null && <small> ({row.percentage.toFixed(1)}%)</small>}</dd></div>)}</dl>}
   </div>;
 }

@@ -1,6 +1,7 @@
 export type Project = Record<string, string>;
 
 const quarters = [
+  ["Q2_FY26-27", "Q2 FY26–27"],
   ["Q1_FY26-27", "Q1 FY26–27"],
   ["Q4_FY25-26", "Q4 FY25–26"],
   ["Q3_FY25-26", "Q3 FY25–26"],
@@ -10,6 +11,7 @@ export const reportingPeriods = [
   { suffix: "Q3_FY25-26", label: "Dec 2025", endDate: "2025-12-31" },
   { suffix: "Q4_FY25-26", label: "Mar 2026", endDate: "2026-03-31" },
   { suffix: "Q1_FY26-27", label: "Jun 2026", endDate: "2026-06-30" },
+  { suffix: "Q2_FY26-27", label: "Sep 2026", endDate: "2026-09-30" },
 ] as const;
 
 export type ReportingPeriod = typeof reportingPeriods[number]["suffix"];
@@ -68,11 +70,11 @@ export function totalUnits(project: Project): number | null {
 
 export function value(project: Project, key: string): string | number | null {
   if (key === "Total Units") return totalUnits(project);
-  if (key === "Units Booked (Q1_FY26-27)") return latestBooking(project)?.booked ?? null;
+  if (key === "Units Booked (Q2_FY26-27)") return latestBooking(project)?.booked ?? null;
   if (key === "Units Booked (Q4_FY25-26)") return bookingForPeriod(project, "Q4_FY25-26")?.booked ?? null;
-  if (key === "Units Available (Q1_FY26-27)") return latestBooking(project)?.available ?? null;
+  if (key === "Units Available (Q2_FY26-27)") return latestBooking(project)?.available ?? null;
   if (key === "Units Available (Q4_FY25-26)") return bookingForPeriod(project, "Q4_FY25-26")?.available ?? null;
-  if (key === "Units Available (Q3_FY25-26)") return numeric(project[key]);
+  if (key === "Units Available (Q3_FY25-26)" || key === "Units Available (Q1_FY26-27)") return numeric(project[key]);
   if (key === "bookedPercent") {
     const booking = latestBooking(project);
     const units = totalUnits(project);

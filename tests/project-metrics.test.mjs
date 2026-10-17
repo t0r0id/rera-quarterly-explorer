@@ -6,8 +6,8 @@ const orchard = {
   "Project Name": "GODREJ LAKESIDE ORCHARD",
   "Approved On": "2024-09-30",
   "Total Units": "698",
-  "Units Booked (Q1_FY26-27)": "837",
-  "Units Available (Q1_FY26-27)": "133",
+  "Units Booked (Q2_FY26-27)": "837",
+  "Units Available (Q2_FY26-27)": "133",
   "Units Booked (Q4_FY25-26)": "678",
   "Units Available (Q4_FY25-26)": "292",
 };
@@ -22,7 +22,7 @@ test("Orchard uses 970 across displayed units, percentage, and aggregates", () =
 });
 
 test("previous-quarter fallback pairs booked and available from that quarter", () => {
-  const project = { ...orchard, "Units Booked (Q1_FY26-27)": "NA" };
+  const project = { ...orchard, "Units Booked (Q2_FY26-27)": "NA" };
   assert.equal(totalUnits(project), 970);
   assert.equal(latestBooking(project).quarter, "Q4 FY25–26");
   assert.equal(value(project, "bookedPercent"), 678 / 970 * 100);
@@ -32,14 +32,14 @@ test("previous-quarter fallback pairs booked and available from that quarter", (
 
 test("missing availability falls back to project details without mixing quarters", () => {
   for (const missing of ["", " ", "NA", "-"]) {
-    assert.equal(totalUnits({ ...orchard, "Units Available (Q1_FY26-27)": missing }), 698);
+    assert.equal(totalUnits({ ...orchard, "Units Available (Q2_FY26-27)": missing }), 698);
   }
 });
 
 test("published zeros remain valid and blanks are not interpreted as zero", () => {
-  assert.equal(totalUnits({ ...orchard, "Units Available (Q1_FY26-27)": "0" }), 837);
-  assert.equal(totalUnits({ ...orchard, "Units Booked (Q1_FY26-27)": "0" }), 133);
-  assert.equal(totalUnits({ "Approved On": "2025-01-01", "Total Units": "698", "Units Booked (Q1_FY26-27)": "0", "Units Available (Q1_FY26-27)": "0" }), 0);
+  assert.equal(totalUnits({ ...orchard, "Units Available (Q2_FY26-27)": "0" }), 837);
+  assert.equal(totalUnits({ ...orchard, "Units Booked (Q2_FY26-27)": "0" }), 133);
+  assert.equal(totalUnits({ "Approved On": "2025-01-01", "Total Units": "698", "Units Booked (Q2_FY26-27)": "0", "Units Available (Q2_FY26-27)": "0" }), 0);
   assert.equal(numeric(""), null);
   assert.equal(numeric(undefined), null);
   assert.equal(numeric("1,200"), 1200);
@@ -60,7 +60,7 @@ test("dated metrics use same-quarter inventory and bookings without carrying rep
   assert.deepEqual(quarterlyInventoryStats([orchard, oldReport], "Q4_FY25-26"), {
     inventory: 1070, reportedInventory: 1070, unknownInventory: 0, booked: 698, unsold: 372, pct: 698 / 1070 * 100,
   });
-  assert.deepEqual(quarterlyInventoryStats([orchard, oldReport], "Q1_FY26-27"), {
+  assert.deepEqual(quarterlyInventoryStats([orchard, oldReport], "Q2_FY26-27"), {
     inventory: 1120, reportedInventory: 970, unknownInventory: 150, booked: 837, unsold: 133, pct: 837 / 1120 * 100,
   });
   assert.deepEqual(quarterlyInventoryStats([orchard], "Q3_FY25-26"), {
@@ -76,11 +76,11 @@ test("dated metrics distinguish zero sales from missing sales and fall back to p
 
 test("unsold uses availability from the selected report and never infers missing values", () => {
   assert.equal(inventoryStats([orchard]).unsold, 133);
-  assert.equal(inventoryStats([{ ...orchard, "Units Booked (Q1_FY26-27)": "NA" }]).unsold, 292);
-  assert.equal(inventoryStats([{ ...orchard, "Units Available (Q1_FY26-27)": "NA" }]).unsold, null);
-  assert.equal(inventoryStats([{ ...orchard, "Units Available (Q1_FY26-27)": "0" }]).unsold, 0);
+  assert.equal(inventoryStats([{ ...orchard, "Units Booked (Q2_FY26-27)": "NA" }]).unsold, 292);
+  assert.equal(inventoryStats([{ ...orchard, "Units Available (Q2_FY26-27)": "NA" }]).unsold, null);
+  assert.equal(inventoryStats([{ ...orchard, "Units Available (Q2_FY26-27)": "0" }]).unsold, 0);
   assert.equal(quarterlyInventoryStats([{ ...orchard, "Units Available (Q4_FY25-26)": "0" }], "Q4_FY25-26").unsold, 0);
-  assert.equal(quarterlyInventoryStats([{ ...orchard, "Units Booked (Q1_FY26-27)": "NA" }], "Q1_FY26-27").unsold, null);
+  assert.equal(quarterlyInventoryStats([{ ...orchard, "Units Booked (Q2_FY26-27)": "NA" }], "Q2_FY26-27").unsold, null);
 });
 
 test("March carries December booked, inventory and availability together, marking table fallback", () => {
@@ -178,21 +178,28 @@ test("historical project counts include month-end approvals and exclude later or
 
 test("unsold columns read the same report as their adjacent booked column", () => {
   const project = { ...orchard, "Units Booked (Q3_FY25-26)": "500", "Units Available (Q3_FY25-26)": "470" };
-  assert.equal(value(project, "Units Available (Q1_FY26-27)"), 133);
+  assert.equal(value(project, "Units Available (Q2_FY26-27)"), 133);
   assert.equal(value(project, "Units Available (Q4_FY25-26)"), 292);
   assert.equal(value(project, "Units Available (Q3_FY25-26)"), 470);
-  const noJune = { ...project, "Units Booked (Q1_FY26-27)": "NA" };
-  assert.equal(value(noJune, "Units Available (Q1_FY26-27)"), 292);
+  const noJune = { ...project, "Units Booked (Q2_FY26-27)": "NA" };
+  assert.equal(value(noJune, "Units Available (Q2_FY26-27)"), 292);
   const onlyDecember = { ...noJune, "Units Booked (Q4_FY25-26)": "NA" };
   assert.equal(value(onlyDecember, "Units Available (Q4_FY25-26)"), 470);
-  assert.equal(value(onlyDecember, "Units Available (Q1_FY26-27)"), 470);
+  assert.equal(value(onlyDecember, "Units Available (Q2_FY26-27)"), 470);
 });
 
 test("unsold columns preserve zero and leave missing availability unknown", () => {
-  for (const period of ["Q1_FY26-27", "Q4_FY25-26", "Q3_FY25-26"]) {
+  for (const period of ["Q2_FY26-27", "Q4_FY25-26", "Q3_FY25-26"]) {
     const project = { ...orchard, [`Units Booked (${period})`]: "10", [`Units Available (${period})`]: "0" };
     assert.equal(value(project, `Units Available (${period})`), 0);
     project[`Units Available (${period})`] = "NA";
     assert.equal(value(project, `Units Available (${period})`), null);
   }
+});
+
+test("June is a dated period that reads June reports only", () => {
+  const june = { ...orchard, "Units Booked (Q1_FY26-27)": "700", "Units Available (Q1_FY26-27)": "270" };
+  assert.equal(value(june, "Units Available (Q1_FY26-27)"), 270);
+  assert.equal(quarterlyInventoryStats([june], "Q1_FY26-27").booked, 700);
+  assert.equal(quarterlyInventoryStats([orchard], "Q1_FY26-27").booked, null);
 });
