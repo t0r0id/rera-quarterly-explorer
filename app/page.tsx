@@ -122,7 +122,7 @@ export default function Home() {
   const history = (key: "projects" | "inventory" | "unknownInventory" | "booked" | "unsold") => datedStats.map(period => {
     const percentage = key === "inventory" || key === "projects" ? null : inventoryShares(period)[key];
     return { label: period.label, value: (period[key] ?? 0).toLocaleString("en-IN"), percentage };
-  });
+  }).reverse();
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); const currentPage = Math.min(page, pageCount - 1); const visibleProjects = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
   const clear = () => { setProjectNames([]); setDistricts([]); setBuilders([]); setPromoters([]); setTalukas([]); setTypes([]); setCompletionStart(""); setCompletionEnd(""); setApprovalStart(""); setApprovalEnd(""); setMinimumUnits(""); setMaximumUnits(""); setHasUpdate(false); setColumnSearch({}); setPage(0); };
   const sortBy = (key: string) => { setSort(s => ({ key, direction: s.key === key && s.direction === "asc" ? "desc" : "asc" })); setPage(0); };
