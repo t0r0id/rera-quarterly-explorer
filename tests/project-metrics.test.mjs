@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { inventoryShares, inventoryStats, latestBooking, numeric, projectCountForPeriod, quarterlyInventoryStats, totalUnits, value } from "../lib/project-metrics.ts";
+import { inventoryShares, inventoryStats, latestBooking, numeric, projectCoordinates, projectCountForPeriod, quarterlyInventoryStats, totalUnits, value } from "../lib/project-metrics.ts";
 
 const orchard = {
   "Project Name": "GODREJ LAKESIDE ORCHARD",
@@ -202,4 +202,17 @@ test("June is a dated period that reads June reports only", () => {
   assert.equal(value(june, "Units Available (Q1_FY26-27)"), 270);
   assert.equal(quarterlyInventoryStats([june], "Q1_FY26-27").booked, 700);
   assert.equal(quarterlyInventoryStats([orchard], "Q1_FY26-27").booked, null);
+});
+
+test("map coordinates accept Bengaluru locations and reject missing or implausible values", () => {
+  assert.deepEqual(projectCoordinates({ Latitude: "12.9716", Longitude: "77.5946" }), { lat: 12.9716, lng: 77.5946 });
+  for (const [Latitude, Longitude] of [
+    ["NA", "NA"], ["", "77.59"], ["12.97", "-"],
+    ["15.3172775", "75.7138884"], // state-centroid placeholder
+    ["125824.20", "773617.17"], // projected / unparsed DMS values
+    ["13.1155776070", "13.1155776070"], // latitude repeated as longitude
+    ["77.5946", "12.9716"], // swapped
+  ]) {
+    assert.equal(projectCoordinates({ Latitude, Longitude }), null, `${Latitude}, ${Longitude}`);
+  }
 });

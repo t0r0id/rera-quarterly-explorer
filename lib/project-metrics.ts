@@ -160,3 +160,14 @@ export function inventoryShares(stats: { inventory: number; booked: number | nul
   }
   return Object.fromEntries(parts.map(part => [part.key, part.tenths / 10])) as Record<typeof keys[number], number | null>;
 }
+
+// Generous box around Bengaluru Urban + Rural; rejects placeholder, swapped and projected coordinates.
+const BENGALURU_BOUNDS = { south: 12.4, north: 13.6, west: 77.0, east: 78.2 };
+
+export function projectCoordinates(project: Project): { lat: number; lng: number } | null {
+  const lat = numeric(project.Latitude);
+  const lng = numeric(project.Longitude);
+  if (lat === null || lng === null) return null;
+  const { south, north, west, east } = BENGALURU_BOUNDS;
+  return lat >= south && lat <= north && lng >= west && lng <= east ? { lat, lng } : null;
+}
